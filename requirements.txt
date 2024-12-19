@@ -1,0 +1,7 @@
+torch
+pytorch-lightning
+datasets
+torchmetrics
+BeautifulSoup4
+pyyaml
+tqdm

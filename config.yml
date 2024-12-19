@@ -1,0 +1,18 @@
+model_type: mlp # or 'sr'
+data_files: jsonl/*.jsonl
+
+save_steps: 1000
+
+model_args:
+  hidden_size: 64
+  num_teams: 12
+  num_venues: 3
+  num_results: 3
+
+trainer:
+  accelerator: mps
+  strategy: auto
+  devices: auto
+  max_steps: 18000
+  accumulate_grad_batches: 32
+  precision: 16-mixed
