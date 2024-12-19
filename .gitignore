@@ -6,7 +6,9 @@ __pycache__/
 test*
 *logs
 *.old
-
+ckpts
+data
+jsonl
 
 # C extensions
 *.so

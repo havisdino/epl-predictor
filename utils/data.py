@@ -11,9 +11,13 @@ TEAMS = [
 ]
 INDICES = [i for i in range(len(TEAMS))]
 TEAM_TO_INDEX = dict(zip(TEAMS, INDICES))
-RESULT_TO_INDEX = dict(zip(["W", "L", "D"], INDICES))
-VENUE_TO_INDEX = dict(zip(["Home", "Away", "Neutral"], INDICES))
-            
+
+RESULTS = ["W", "L", "D"]
+RESULT_TO_INDEX = dict(zip(RESULTS, INDICES))
+
+VENUES = ["Home", "Away", "Neutral"]
+VENUE_TO_INDEX = dict(zip(VENUES, INDICES))
+
 
 def load_and_encode(data_files="jsonl/*.jsonl"):
     return load_dataset("json", data_files=data_files, split="train").map(

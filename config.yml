@@ -1,7 +1,9 @@
-model_type: mlp # or 'sr'
-data_files: jsonl/*.jsonl
+model_type: mlp # `mlp` or `sr`
+data_files: jsonl_new.old/*.jsonl
 
 save_steps: 1000
+
+checkpoint: ckpts/mlp-step-1000.ckpt
 
 model_args:
   hidden_size: 64

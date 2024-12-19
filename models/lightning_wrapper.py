@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 
+from utils.metrics import accuracy
+
 
 class LightningWrapper(LightningModule):
     def __init__(self, model):
@@ -23,7 +25,7 @@ class LightningWrapper(LightningModule):
         
         loss = F.cross_entropy(logits, target, label_smoothing=0.05)
         
-        acc_train_new = (logits.argmax(-1) == target) / target.numel()
+        acc_train_new = accuracy(logits, target)
         self._acc_train = (self._acc_train * self._count + acc_train_new) / (self._count + 1)
         self._count += 1
         
