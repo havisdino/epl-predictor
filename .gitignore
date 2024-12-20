@@ -9,6 +9,7 @@ test*
 ckpts
 data
 jsonl
+readme.txt
 
 # C extensions
 *.so

@@ -1,5 +1,5 @@
 model_type: mlp # `mlp` or `sr`
-data_files: jsonl_new.old/*.jsonl
+data_files: data/test/*.jsonl
 
 save_steps: 1000
 
