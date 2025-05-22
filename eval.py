@@ -1,7 +1,5 @@
 from pytorch_lightning import Trainer
 from pytorch_lightning import LightningModule, Trainer
-from torchmetrics.functional.classification import (
-    multiclass_accuracy, multiclass_f1_score, multiclass_precision, multiclass_recall)
 
 from utils.callbacks import CheckpointSaveEveryNSteps
 from utils.data import batch_generator
@@ -30,7 +28,12 @@ def main(config):
         callbacks=[CheckpointSaveEveryNSteps(config.save_steps)]
     )
     
-    trainer.test(wrapper, batch_generator(config.data_files), ckpt_path=config.checkpoint)
+    def test_batch_generator():
+        data_iter = batch_generator(config.data_files)
+        for _ in range(1000):
+            yield next(data_iter)
+    
+    trainer.test(wrapper, test_batch_generator(), ckpt_path=config.checkpoint)
 
 if __name__ == "__main__":
     config = Config.from_yaml("config.yml")

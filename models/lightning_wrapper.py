@@ -33,6 +33,15 @@ class LightningWrapper(LightningModule):
 
         return loss
     
+    def test_step(self, inputs):
+        logits = self.model(inputs)        
+        target = inputs["next_match_result"]
+        
+        loss = F.cross_entropy(logits, target, label_smoothing=0.05)
+        
+        acc = accuracy(logits, target)
+        self.log("acc", acc.item(), prog_bar=True)
+    
     def on_before_zero_grad(self, optimizer):
         super().on_before_zero_grad(optimizer)
         
