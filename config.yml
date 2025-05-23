@@ -1,4 +1,4 @@
-model_type: sr # `mlp` or `sr`
+model_type: mlp # `mlp` or `sr`
 data_files: data/test/*.jsonl
 
 save_steps: 1000
