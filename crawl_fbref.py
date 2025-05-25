@@ -1,8 +1,8 @@
-from argparse import ArgumentParser
-import requests
-from bs4 import BeautifulSoup
 import json
+from bs4 import BeautifulSoup
+import cloudscraper
 from tqdm import tqdm
+from argparse import ArgumentParser
 
 
 TEAMS = [
@@ -20,8 +20,9 @@ def crawl(url, team):
     
     data = []
     
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
+    scraper = cloudscraper.create_scraper()
+    r = scraper.get(url)
+    soup = BeautifulSoup(r.text, "html.parser")
     
     table = soup.find("table", {"id": "matchlogs_for"})
 
@@ -34,13 +35,17 @@ def crawl(url, team):
         date = tr.find(attrs={"data-stat": "date"}).get_text(strip=True)
         venue = tr.find(attrs={"data-stat": "venue"}).get_text(strip=True)
         result = tr.find(attrs={"data-stat": "result"}).get_text(strip=True)
+        goals_for = tr.find(attrs={"data-stat": "goals_for"}).get_text(strip=True)
+        goals_against = tr.find(attrs={"data-stat": "goals_against"}).get_text(strip=True)
         
         sample = dict(
             date=date,
             venue=venue,
             result=result,
             team=team,
-            opponent=opponent
+            opponent=opponent,
+            goals_for=int(goals_for) if goals_for.isdigit() else 0,
+            goals_against=int(goals_against) if goals_against.isdigit() else 0
         )
         
         data.append(sample)
@@ -53,11 +58,12 @@ def main(args):
     
     with open(args.urls) as url_file, open(args.save_path, "w") as jsonl_file:
         for url in (bar := tqdm(url_file)):
+            url = url.strip()
             try:
-                bar.set_description(f"Crawling `{url}`")
+                bar.set_description(f"Crawling from `{url}`")
                 data = crawl(url, args.team)
             except Exception as e:
-                print(e.with_traceback)()
+                print(e)
                 continue
             for sample in data:
                 jsonl_file.write(json.dumps(sample) + "\n")

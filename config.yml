@@ -3,10 +3,9 @@ data_files: data/test/*.jsonl
 
 save_steps: 1000
 
-checkpoint: ckpts/sr-step-1000.ckpt
-
+checkpoint: ckpts/mlp-d16-step-1000.ckpt
 model_args:
-  hidden_size: 64
+  hidden_size: 16
   num_teams: 12
   num_venues: 3
   num_results: 3

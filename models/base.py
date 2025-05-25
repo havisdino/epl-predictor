@@ -20,6 +20,17 @@ class ModelBase(ABC, nn.Module):
         self.out_proj = None
     
     def forward(self, inputs):
+        r"""Inputs should be a dictionary with the following keys:
+        - "past_matches": a dictionary containing:
+            - "venue": tensor of shape (B, L) with past match venues
+            - "team": tensor of shape (B, L) with past match teams
+            - "opponent": tensor of shape (B, L) with past match opponents
+            - "result": tensor of shape (B, L) with past match results
+        - "next_match_conditions": a dictionary containing:
+            - "venue": tensor of shape (B, 1) with next match venue
+            - "team": tensor of shape (B, 1) with next match team
+            - "opponent": tensor of shape (B, 1) with next match opponent
+        """
         if self.out_proj is None:
             raise NotImplementedError()
         

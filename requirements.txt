@@ -5,3 +5,6 @@ torchmetrics
 BeautifulSoup4
 pyyaml
 tqdm
+fastapi
+uvicorn[standard]
+flask
