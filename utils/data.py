@@ -44,7 +44,7 @@ def generator(data_files="jsonl/*.jsonl"):
         yield {"past_matches": past_matches, "next_match": next_match}
         
 
-def proccess(inputs):
+def process(inputs):
     assert isinstance(inputs, dict)
     
     past_matches = inputs["past_matches"]
@@ -69,4 +69,4 @@ def proccess(inputs):
 def batch_generator(data_files):
     data_iter = generator(data_files)
     while True:
-        yield proccess(next(data_iter))
+        yield process(next(data_iter))

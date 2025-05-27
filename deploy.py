@@ -1,30 +1,43 @@
-from flask import Flask, jsonify, request
+import torch
 from datetime import datetime
-
-
-app = Flask(__name__)
-data = None
+from models.lightning_wrapper import LightningWrapper
+from flask import Flask, jsonify, request
+from models.mlp import MLPWithAttention
+from utils.config import Config
+from utils.data import TEAM_TO_INDEX, VENUE_TO_INDEX, load_and_encode
 
 
 def load_data():
-    global data
+    global raw_data
 
     from datasets import load_dataset
 
-    data = load_dataset("json", data_files="data/db/*.jsonl", split="train").to_list()
-    data = list(sorted(data, key=lambda x: x["date"]))
+    raw_data = load_dataset("json", data_files="data/db/*.jsonl", split="train").to_list()
+    raw_data = list(sorted(raw_data, key=lambda x: x["date"]))
 
-    return data
+    return raw_data
+
+
+def load_model():
+    config = Config.from_yaml("config.yml")
+    model = MLPWithAttention(**vars(config.model_args))
+    wrapper = LightningWrapper.load_from_checkpoint(config.checkpoint, map_location="cpu", model=model)
+    return wrapper
+
+
+app = Flask(__name__)
+encoded_data = load_and_encode("data/db/matches.jsonl")
+raw_data = load_data()
+model = load_model()
 
 
 @app.route("/matches", methods=["GET"])
 def get_matches():
-    # Query parameters
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
     team = request.args.get("team")
 
-    filtered_data = data.copy()
+    filtered_data = raw_data
 
     if start_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
@@ -43,28 +56,77 @@ def get_matches():
 @app.route("/teams", methods=["GET"])
 def get_teams():
     teams = set()
-    for match in data:
-        teams.add(match["team_a"])
-        teams.add(match["team_b"])
+    for match in raw_data:
+        teams.add(match["team"])
+        teams.add(match["opponent"])
     return jsonify(sorted(list(teams)))
 
 
 @app.route("/match/<date>/<team_a>/<team_b>", methods=["GET"])
 def get_match(date, team_a, team_b):
-    match = next(
-        (m for m in data
-         if m["date"] == date
-         and m["team_a"] == team_a
-         and m["team_b"] == team_b),
-        None
-    )
+    for match in encoded_data[::-1]:
+        if match["date"] == date and match["team_a"] == team_a and match["team_b"] == team_b:
+            return jsonify(match)
+    return jsonify({"error": "Match not found"}), 404
 
-    if match is None:
-        return jsonify({"error": "Match not found"}), 404
 
-    return jsonify(match)
+def search_matches_before(date):
+    res = encoded_data[-10:]
+    
+    for i, match in enumerate(encoded_data):
+        match_date = match["date"].strftime("%Y-%m-%d")
+        
+        if match_date == date:
+            res = encoded_data[i-9:i+1]
+            break
+        elif match_date > date:
+            res = encoded_data[i-10:i]
+            break
+            
+    res.pop("date")
+    return res
 
+
+@app.route("/predict", methods=["POST"])
+def predict_match():
+    data = request.json
+    date = data.get("date")
+    team = data.get("team")
+    opponent = data.get("opponent")
+    venue = data.get("venue")
+    
+    past_matches = search_matches_before(date)
+    
+    past_matches = {k: torch.tensor([v]) for k, v in past_matches.items()}
+    
+    next_match_conditions = {
+        "venue": torch.tensor([[VENUE_TO_INDEX[venue]]]),
+        "team": torch.tensor([[TEAM_TO_INDEX[team]]]),
+        "opponent": torch.tensor([[TEAM_TO_INDEX[opponent]]])
+    }
+    
+    inputs = {
+        "past_matches": past_matches,
+        "next_match_conditions": next_match_conditions
+    }
+    
+    model.eval()
+    with torch.no_grad():
+        output = model(inputs)
+        probs = output.softmax(-1).cpu().numpy()
+    result = {
+        "team": team,
+        "opponent": opponent,
+        "venue": venue,
+        "probabilities": {
+            "win": float(probs[0, 0]),
+            "lose": float(probs[0, 1]),
+            "draw": float(probs[0, 2])
+        }
+    }
+    
+    return jsonify(result)
+    
 
 if __name__ == "__main__":
-    data = load_data()
-    app.run(host="0.0.0.0", port=8888, debug=True)
+    app.run(host="localhost", port=8888, debug=True)
