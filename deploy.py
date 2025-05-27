@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request
 from models.mlp import MLPWithAttention
 from utils.config import Config
 from utils.data import TEAM_TO_INDEX, VENUE_TO_INDEX, load_and_encode
+from utils.sqlite_tools import get_head_to_head_stats
 
 
 def load_model():
@@ -57,10 +58,12 @@ def predict_match():
         "opponent": torch.tensor([[TEAM_TO_INDEX[opponent]]])
     }
     
+    stats = get_head_to_head_stats(team, opponent)
+    
     inputs = {
         "past_matches": past_matches,
         "next_match_conditions": next_match_conditions,
-        "stats": ...
+        "stats": stats
         
     }
     

@@ -2,7 +2,7 @@ import torch
 import random
 from datasets import load_dataset
 
-from utils.sqlite_tools import get_n_previous_matches_sqlite
+from utils.sqlite_tools import get_head_to_head_stats, get_n_previous_matches_sqlite
 
 
 TEAMS = [
@@ -51,7 +51,10 @@ def generator(data_files="data/db2/train_matches.jsonl"):
             "goals_against": [match["goals_against"] for match in past_matches]
         }
         
-        yield {"past_matches": past_matches, "next_match": next_match, "stats": ...}
+        stats = get_head_to_head_stats(next_match["team"], next_match["opponent"])
+        stats = [v for v in stats.values()]
+        
+        yield {"past_matches": past_matches, "next_match": next_match, "stats": stats}
         
 
 def process(inputs):
@@ -69,11 +72,13 @@ def process(inputs):
     next_match_conditions = next_match
     next_match_conditions = {k: torch.tensor([v]) for k, v in next_match_conditions.items()}
     
+    stats = torch.tensor([inputs["stats"]])
+    
     return {
         "past_matches": past_matches,
         "next_match_conditions": next_match_conditions,
         "next_match_result": next_match_result,
-        "stats": ...
+        "stats": stats
     }
 
 

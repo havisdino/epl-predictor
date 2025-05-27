@@ -112,3 +112,70 @@ def update_sqlite_with_new_records(jsonl_path, db_path="data/epl.db"):
 
     conn.commit()
     conn.close()
+    
+    
+import sqlite3
+
+def recompute_team_stats(db_path="epl.db"):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    c.execute("DROP TABLE IF EXISTS team_stats")
+    c.execute("""
+        CREATE TABLE team_stats (
+            team TEXT,
+            opponent TEXT,
+            pwin REAL,
+            plose REAL,
+            pdraw REAL,
+            PRIMARY KEY (team, opponent)
+        )
+    """)
+
+    # Aggregate match outcomes
+    c.execute("""
+        SELECT team, opponent,
+               SUM(CASE WHEN result = "W" THEN 1 ELSE 0 END) AS wins,
+               SUM(CASE WHEN result = "L" THEN 1 ELSE 0 END) AS losses,
+               SUM(CASE WHEN result = "D" THEN 1 ELSE 0 END) AS draws,
+               COUNT(*) AS total
+        FROM matches
+        GROUP BY team, opponent
+    """)
+
+    rows = c.fetchall()
+
+    # Insert probabilities into team_stats
+    for row in rows:
+        team, opponent, wins, losses, draws, total = row
+        pwin = wins / total
+        plose = losses / total
+        pdraw = draws / total
+
+        c.execute("""
+            INSERT INTO team_stats (team, opponent, pwin, plose, pdraw)
+            VALUES (?, ?, ?, ?, ?)
+        """, (team, opponent, pwin, plose, pdraw))
+
+    conn.commit()
+    conn.close()
+    
+    
+def get_head_to_head_stats(team, opponent, db_path="epl.db"):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT pwin, plose, pdraw FROM team_stats
+        WHERE team = ? AND opponent = ?
+    """, (team, opponent))
+    row1 = c.fetchone()
+    conn.close()
+
+    result = {
+        "pwin": row1[0],
+        "plose": row1[1],
+        "pdraw": row1[2]
+    }
+
+    return result
