@@ -34,11 +34,13 @@ def load_and_encode(data_files="data/db2/train_matches.jsonl"):
 
 def generator(data_files="data/db2/train_matches.jsonl"):
     dataset = load_and_encode(data_files)
-    dataset = dataset.sort("date").remove_columns("date")    
+    dataset = dataset.sort("date")
     
     while True:
         next_match = random.choice(dataset)
         past_matches = get_n_previous_matches_sqlite(next_match["date"].strftime("%Y-%m-%d"), N=10)
+        
+        next_match.pop("date")
         
         past_matches = {
             "venue": [VENUE_TO_INDEX[match["venue"]] for match in past_matches],
@@ -49,10 +51,10 @@ def generator(data_files="data/db2/train_matches.jsonl"):
             "goals_against": [match["goals_against"] for match in past_matches]
         }
         
-        yield {"past_matches": past_matches, "next_match": next_match}
+        yield {"past_matches": past_matches, "next_match": next_match, "stats": ...}
         
 
-def proccess(inputs):
+def process(inputs):
     assert isinstance(inputs, dict)
     
     past_matches = inputs["past_matches"]
@@ -70,11 +72,12 @@ def proccess(inputs):
     return {
         "past_matches": past_matches,
         "next_match_conditions": next_match_conditions,
-        "next_match_result": next_match_result
+        "next_match_result": next_match_result,
+        "stats": ...
     }
 
 
 def batch_generator(data_files):
     data_iter = generator(data_files)
     while True:
-        yield proccess(next(data_iter))
+        yield process(next(data_iter))

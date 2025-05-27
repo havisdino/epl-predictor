@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
+from torchmetrics.functional import precision, recall
 
 from utils.metrics import accuracy
 
@@ -37,10 +38,13 @@ class LightningWrapper(LightningModule):
         logits = self.model(inputs)        
         target = inputs["next_match_result"]
         
-        loss = F.cross_entropy(logits, target, label_smoothing=0.05)
-        
         acc = accuracy(logits, target)
+        pre = precision(logits, target, average="macro")
+        rec = recall(logits, target, average="macro")
+        
         self.log("acc", acc.item(), prog_bar=True)
+        self.log("pre", pre.item(), prog_bar=True)
+        self.log("rec", rec.item(), prog_bar=True)
     
     def on_before_zero_grad(self, optimizer):
         super().on_before_zero_grad(optimizer)

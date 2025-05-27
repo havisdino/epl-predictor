@@ -1,5 +1,4 @@
 import torch
-from datetime import datetime
 from models.lightning_wrapper import LightningWrapper
 from flask import Flask, jsonify, request
 from models.mlp import MLPWithAttention
@@ -15,7 +14,6 @@ def load_model():
 
 
 app = Flask(__name__)
-encoded_data = load_and_encode("data/raw.old/2014-2024/*.jsonl")
 encoded_data = load_and_encode("data/db/*.jsonl")
 model = load_model()
 
@@ -32,13 +30,7 @@ def search_matches_before(match):
         ):
             res = encoded_data[i-10:i]
             break
-    
-    # debug
-    print(past_match["date"].strftime("%Y-%m-%d"), flush=True)
-    app.logger.error(f">>> received: {match["date"]}")
-    for date in res["date"]:
-        app.logger.error(date.strftime("%Y-%m-%d"))
-    # end debug
+
     res.pop("date")
     return res
 
@@ -67,7 +59,9 @@ def predict_match():
     
     inputs = {
         "past_matches": past_matches,
-        "next_match_conditions": next_match_conditions
+        "next_match_conditions": next_match_conditions,
+        "stats": ...
+        
     }
     
     model.eval()
