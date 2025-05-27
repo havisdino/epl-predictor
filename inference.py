@@ -1,5 +1,5 @@
 import torch
-
+from colorama import Fore, init
 from utils.data import RESULTS, TEAMS, VENUE_TO_INDEX, VENUES, batch_generator
 from models.lightning_wrapper import LightningWrapper
 from models.mlp import MLPWithAttention
@@ -7,6 +7,7 @@ from models.sr import SoftmaxRegressorWithAttention
 from utils.config import Config
 from utils.metrics import entropy
 
+init(autoreset=True)
 
 team_a = None
 team_b = None
@@ -29,7 +30,7 @@ def decode_info(inputs):
         opponent = TEAMS[opponent_id]
         result = RESULTS[result_id]
         
-        print(f"\tVenue: {venue};\tTeam A: {team};\tTeam B: {opponent};\t\tResult for Team A: {result}")
+        print("Venue: {:8s} Team A: {:12s} Team B: {:12s} Result for Team A: {:1s}".format(venue, team, opponent, result))
         
     print("\n>>> Next match")
     
@@ -41,7 +42,7 @@ def decode_info(inputs):
     team_b = TEAMS[opponent_id]
     result = inputs["next_match_result"].item()
     
-    print(f"\tVenue: {VENUES[venue_id]};\tTeam A: {team_a};\tTeam B: {team_b};\n")
+    print("Venue: {:8s} Team A: {:12s} Team B: {:12s}".format(VENUES[venue_id], team_a, team_b))
     
 
 def decode_pred(probs):
@@ -53,8 +54,13 @@ def decode_pred(probs):
     
     print(f"\t* Entropy: {entropy(probs).item():.2f}")
     
-    print(f"\n>>> The most probable:\t{team_a} {verbs[pred_id]} {team_b}")
-    print(f">>> Ground truth:\t{team_a} {verbs[result]} {team_b}")
+    if verbs[pred_id] == verbs[result]:
+        color = Fore.GREEN
+    else:
+        color = Fore.RED
+    
+    print(f"\n>>> The most probable:{color}\t{team_a} {verbs[pred_id]} {team_b}")
+    print(f">>> Ground truth:{color}\t{team_a} {verbs[result]} {team_b}")
 
 
 def main(config):
@@ -69,13 +75,16 @@ def main(config):
 
     data_iter = batch_generator(config.data_files)
     
-    inputs = next(data_iter)
-    with torch.no_grad():
-        wrapper.eval()
-        probs = wrapper(inputs).softmax(-1)
+    for _ in range(20):
+        inputs = next(data_iter)
+        with torch.no_grad():
+            wrapper.eval()
+            probs = wrapper(inputs).softmax(-1)
+            
+        decode_info(inputs)
+        decode_pred(probs)
         
-    decode_info(inputs)
-    decode_pred(probs)
+        print("\n" + "=" * 50 + "\n")
 
 
 if __name__ == "__main__":

@@ -26,7 +26,8 @@ def load_model():
 
 
 app = Flask(__name__)
-encoded_data = load_and_encode("data/db/matches.jsonl")
+encoded_data = load_and_encode("data/raw.old/2014-2024/*.jsonl")
+encoded_data = load_and_encode("data/db/*.jsonl")
 raw_data = load_data()
 model = load_model()
 
@@ -70,19 +71,25 @@ def get_match(date, team_a, team_b):
     return jsonify({"error": "Match not found"}), 404
 
 
-def search_matches_before(date):
+def search_matches_before(match):
     res = encoded_data[-10:]
     
-    for i, match in enumerate(encoded_data):
-        match_date = match["date"].strftime("%Y-%m-%d")
+    for i, past_match in enumerate(encoded_data):
         
-        if match_date == date:
-            res = encoded_data[i-9:i+1]
-            break
-        elif match_date > date:
+        if (
+            past_match["team"] == match["team"]
+            and past_match["opponent"] == match["opponent"]
+            and past_match["date"].strftime("%Y-%m-%d") == match["date"]
+        ):
             res = encoded_data[i-10:i]
             break
-            
+    
+    # debug
+    print(past_match["date"].strftime("%Y-%m-%d"), flush=True)
+    app.logger.error(f">>> received: {match["date"]}")
+    for date in res["date"]:
+        app.logger.error(date.strftime("%Y-%m-%d"))
+    # end debug
     res.pop("date")
     return res
 
@@ -95,7 +102,11 @@ def predict_match():
     opponent = data.get("opponent")
     venue = data.get("venue")
     
-    past_matches = search_matches_before(date)
+    past_matches = search_matches_before(match={
+        "date": date,
+        "team": TEAM_TO_INDEX[team],
+        "opponent": TEAM_TO_INDEX[opponent]
+    })
     
     past_matches = {k: torch.tensor([v]) for k, v in past_matches.items()}
     
