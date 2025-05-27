@@ -7,17 +7,6 @@ from utils.config import Config
 from utils.data import TEAM_TO_INDEX, VENUE_TO_INDEX, load_and_encode
 
 
-def load_data():
-    global raw_data
-
-    from datasets import load_dataset
-
-    raw_data = load_dataset("json", data_files="data/db/*.jsonl", split="train").to_list()
-    raw_data = list(sorted(raw_data, key=lambda x: x["date"]))
-
-    return raw_data
-
-
 def load_model():
     config = Config.from_yaml("config.yml")
     model = MLPWithAttention(**vars(config.model_args))
@@ -28,30 +17,7 @@ def load_model():
 app = Flask(__name__)
 encoded_data = load_and_encode("data/raw.old/2014-2024/*.jsonl")
 encoded_data = load_and_encode("data/db/*.jsonl")
-raw_data = load_data()
 model = load_model()
-
-
-@app.route("/matches", methods=["GET"])
-def get_matches():
-    start_date = request.args.get("start_date")
-    end_date = request.args.get("end_date")
-    team = request.args.get("team")
-
-    filtered_data = raw_data
-
-    if start_date:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        filtered_data = [m for m in filtered_data if datetime.strptime(m["date"], "%Y-%m-%d") >= start_date]
-
-    if end_date:
-        end_date = datetime.strptime(end_date, "%Y-%m-%d")
-        filtered_data = [m for m in filtered_data if datetime.strptime(m["date"], "%Y-%m-%d") <= end_date]
-
-    if team:
-        filtered_data = [m for m in filtered_data if team in (m["team_a"], m["team_b"])]
-
-    return jsonify(filtered_data)
 
 
 def search_matches_before(match):
