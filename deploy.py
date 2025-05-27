@@ -1,9 +1,8 @@
 from flask import Flask, jsonify, request
 from datetime import datetime
-
-
-app = Flask(__name__)
-data = None
+from models.lightning_wrapper import LightningWrapper
+from models.mlp import MLPWithAttention
+from utils.config import Config
 
 
 def load_data():
@@ -17,14 +16,25 @@ def load_data():
     return data
 
 
+def load_model():
+    config = Config.from_yaml("config.yml")
+    model = MLPWithAttention(**vars(config.model_args))
+    wrapper = LightningWrapper.load_from_checkpoint(config.checkpoint, map_location="cpu", model=model)
+    return wrapper
+
+
+app = Flask(__name__)
+data = load_data()
+model = load_model()
+
+
 @app.route("/matches", methods=["GET"])
 def get_matches():
-    # Query parameters
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
     team = request.args.get("team")
 
-    filtered_data = data.copy()
+    filtered_data = data
 
     if start_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
@@ -51,18 +61,24 @@ def get_teams():
 
 @app.route("/match/<date>/<team_a>/<team_b>", methods=["GET"])
 def get_match(date, team_a, team_b):
-    match = next(
-        (m for m in data
-         if m["date"] == date
-         and m["team_a"] == team_a
-         and m["team_b"] == team_b),
-        None
-    )
+    for match in data[::-1]:
+        if match["date"] == date and match["team_a"] == team_a and match["team_b"] == team_b:
+            return jsonify(match)
+    return jsonify({"error": "Match not found"}), 404
 
-    if match is None:
-        return jsonify({"error": "Match not found"}), 404
 
-    return jsonify(match)
+def search_matches_before(date):
+    rdata = data[::-1]
+    for i, match in enumerate(rdata):
+        if match["date"] < date:
+            return rdata[1:i+10]
+    return None
+
+
+
+@app.route("/predict", methods=["POST"])
+def predict_match():
+    
 
 
 if __name__ == "__main__":
