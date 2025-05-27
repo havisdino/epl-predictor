@@ -1,6 +1,8 @@
 import torch
-from random import randint
+import random
 from datasets import load_dataset
+
+from utils.sqlite_tools import get_n_previous_matches_sqlite
 
 
 TEAMS = [
@@ -19,7 +21,7 @@ VENUES = ["Home", "Away", "Neutral"]
 VENUE_TO_INDEX = dict(zip(VENUES, INDICES))
 
 
-def load_and_encode(data_files="jsonl/*.jsonl"):
+def load_and_encode(data_files="data/db2/train_matches.jsonl"):
     return load_dataset("json", data_files=data_files, split="train").map(
         lambda s: dict(
             venue=VENUE_TO_INDEX[s["venue"]],
@@ -30,16 +32,22 @@ def load_and_encode(data_files="jsonl/*.jsonl"):
     )
 
 
-def generator(data_files="jsonl/*.jsonl"):
+def generator(data_files="data/db2/train_matches.jsonl"):
     dataset = load_and_encode(data_files)
     dataset = dataset.sort("date").remove_columns("date")    
     
-    num_samples = len(dataset)
-
     while True:
-        index = randint(10, num_samples - 1)
-        past_matches = dataset[index - 10:index]
-        next_match = dataset[index:index + 1]
+        next_match = random.choice(dataset)
+        past_matches = get_n_previous_matches_sqlite(next_match["date"].strftime("%Y-%m-%d"), N=10)
+        
+        past_matches = {
+            "venue": [VENUE_TO_INDEX[match["venue"]] for match in past_matches],
+            "result": [RESULT_TO_INDEX[match["result"]] for match in past_matches],
+            "team": [TEAM_TO_INDEX[match["team"]] for match in past_matches],
+            "opponent": [TEAM_TO_INDEX[match["opponent"]] for match in past_matches],
+            "goals_for": [match["goals_for"] for match in past_matches],
+            "goals_against": [match["goals_against"] for match in past_matches]
+        }
         
         yield {"past_matches": past_matches, "next_match": next_match}
         
